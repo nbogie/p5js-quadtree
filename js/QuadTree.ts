@@ -1,8 +1,7 @@
-//hacky
-let gQTCounter = 0;
-
 //TODO: remove p5.Vector - have no dependence on p5
 class QuadTree {
+  static staticQTCounter = 0;
+
   static build(
     cx: number,
     cy: number,
@@ -73,7 +72,7 @@ class QuadTree {
   rectangle: Rectangle;
   myID: number;
   constructor(center: p5.Vector, w: number, h: number) {
-    this.myID = gQTCounter++;
+    this.myID = QuadTree.staticQTCounter++;
     this.rectangle = new Rectangle(center.x, center.y, w, h);
     this.directlyContainedPoints = [];
     this.capacity = 20;

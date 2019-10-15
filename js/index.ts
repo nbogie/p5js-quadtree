@@ -10,11 +10,11 @@ interface Point {
 }
 
 let gPoints: Particle[];
+
 let qtree: QuadTree;
-let qtreeFromScratch: QuadTree;
 let gQueryRectangle: Rectangle;
 let isGridOn = false;
-let isDrawAllPoints = false;
+let isDrawAllPoints = true;
 let isDrawQueryResults = true;
 
 function toggleDrawAllPoints(): boolean {
@@ -29,32 +29,22 @@ function toggleDrawQueryResults(): boolean {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   gPoints = [];
-  const center = createVector(width / 2, height / 2);
-  qtree = new QuadTree(center, width, height);
-  repeat(100000, ix => gPoints.push(Particle.perlinRandomOnScreen(ix)));
-  //testQTree();
 }
 
 function mouseDragged() {
   let p = new Particle(mouseX, mouseY);
   gPoints.push(p);
-  qtree.insert(p);
 }
 
 function update() {
   gQueryRectangle = new Rectangle(mouseX, mouseY, 100, 100);
+  QuadTree.staticQTCounter = 0;
   gTimings.timeToBuild = timeIt(() => {
-    qtreeFromScratch = QuadTree.build(
-      width / 2,
-      height / 2,
-      width,
-      height,
-      gPoints
-    );
+    qtree = QuadTree.build(width / 2, height / 2, width, height, gPoints);
   });
   //make the query and highlight the points it returns
   gTimings.timeToQuery = timeIt(
-    () => (gQueryResults = qtreeFromScratch.query(gQueryRectangle))
+    () => (gQueryResults = qtree.query(gQueryRectangle))
   );
   gTimings.timeToLocateNaively = timeIt(() =>
     gPoints.filter(p => dist(p.pos.x, p.pos.y, mouseX, mouseY) < 100)
@@ -94,7 +84,6 @@ function drawOnly() {
     gQueryRectangle.h
   );
 
-  // qtree.query(queryRectangle);
   if (isDrawQueryResults) {
     strokeWeight(7);
     stroke("red");
@@ -104,15 +93,20 @@ function drawOnly() {
   }
 
   //debugging count
-  logLines(50, height - 400, [
+  showDebugText(50, height - 400, [
     "FPS: " + frameRate().toFixed(2),
-    "query count: " + gQueryResults.length,
-    "full count: " + gPoints.length,
+    "points from query: " + gQueryResults.length,
+    "total points: " + gPoints.length,
     "update() (ms): " + gTimings.update.toFixed(2),
     "drawOnly() (not update) (ms): " + gTimings.drawOnly.toFixed(2),
     "query time (ms): " + gTimings.timeToQuery.toFixed(2),
     "Rebuild time (ms): " + gTimings.timeToBuild.toFixed(0),
     "Naive query (ms):" + gTimings.timeToLocateNaively.toFixed(2)
+  ]);
+  showDebugText(width / 2, height - 400, [
+    "d - toggle Draw of all points",
+    "q - toggle draw of Query points",
+    "p - (re)Populate *many* points"
   ]);
 }
 
@@ -125,9 +119,9 @@ let gTimings = {
 };
 let gQueryResults: Point[];
 
-function logLines(x: number, y: number, lines: string[]) {
+function showDebugText(x: number, y: number, lines: string[]) {
   const lineHeight = 40;
-  textSize(30);
+  textSize(20);
   fill("gray");
   stroke("whitesmoke");
   rectMode(CORNER);
@@ -160,4 +154,12 @@ function keyPressed() {
   if (key == "q") {
     toggleDrawQueryResults();
   }
+  if (key == "p") {
+    populateTreeRandomly();
+  }
+}
+
+function populateTreeRandomly(): void {
+  gPoints.length = 0;
+  repeat(10000, ix => gPoints.push(Particle.perlinRandomOnScreen(ix)));
 }
