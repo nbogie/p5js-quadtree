@@ -10,10 +10,10 @@ function assertFalse(assertion: boolean, text: string): void {
 }
 
 function assertFallsWithin(p: Point, t: QuadTree) {
-  assertTrue(t.fallsWithin(p), `falls within? ${p.pos}`);
+  assertTrue(t.rectangle.fallsWithin(p), `falls within? ${p.pos}`);
 }
 function assertNotFallsWithin(p: Point, t: QuadTree) {
-  assertFalse(t.fallsWithin(p), `falls within? ${p.pos}`);
+  assertFalse(t.rectangle.fallsWithin(p), `falls within? ${p.pos}`);
 }
 
 function testQTree(): void {
