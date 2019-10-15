@@ -10,21 +10,32 @@ interface Point {
 }
 
 let gPoints: Particle[];
-
-let qtree: QuadTree;
+let gQuadTree: QuadTree;
 let gQueryRectangle: Rectangle;
-let isGridOn = false;
-let isDrawAllPoints = true;
-let isDrawQueryResults = true;
+let gQueryResults: Point[];
 
-function toggleDrawAllPoints(): boolean {
-  isDrawAllPoints = !isDrawAllPoints;
-  return isDrawAllPoints;
+//only for performance analysis
+let gTimings = {
+  timeToBuild: 0,
+  timeToQuery: 0,
+  update: 0,
+  drawOnly: 0,
+  timeToLocateNaively: 0
+};
+
+interface AppOptions {
+  isGridOn: boolean;
+  isDrawAllPoints: boolean;
+  isDrawQueryResults: boolean;
+  isShowDebugText: boolean;
 }
-function toggleDrawQueryResults(): boolean {
-  isDrawQueryResults = !isDrawQueryResults;
-  return isDrawQueryResults;
-}
+
+let opts = {
+  isGridOn: false,
+  isDrawAllPoints: true,
+  isDrawQueryResults: true,
+  isShowDebugText: true
+};
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -40,11 +51,11 @@ function update() {
   gQueryRectangle = new Rectangle(mouseX, mouseY, 100, 100);
   QuadTree.staticQTCounter = 0;
   gTimings.timeToBuild = timeIt(() => {
-    qtree = QuadTree.build(width / 2, height / 2, width, height, gPoints);
+    gQuadTree = QuadTree.build(width / 2, height / 2, width, height, gPoints);
   });
   //make the query and highlight the points it returns
   gTimings.timeToQuery = timeIt(
-    () => (gQueryResults = qtree.query(gQueryRectangle))
+    () => (gQueryResults = gQuadTree.query(gQueryRectangle))
   );
   gTimings.timeToLocateNaively = timeIt(() =>
     gPoints.filter(p => dist(p.pos.x, p.pos.y, mouseX, mouseY) < 100)
@@ -57,42 +68,15 @@ function draw() {
 }
 function drawOnly() {
   background("black");
-  if (isGridOn) {
-    drawDebugGrid();
-  }
-  drawQuadTreeForP5(qtree);
+  opts.isGridOn && drawDebugGrid();
+  drawQuadTree(gQuadTree);
+  opts.isDrawAllPoints && drawAllPoints();
+  drawQueryRectangle();
+  opts.isDrawQueryResults && drawQueryResults();
+  opts.isShowDebugText && drawDebugPanels();
+}
 
-  if (isDrawAllPoints) {
-    //draw ALL the points in the demo
-    stroke("white");
-    strokeWeight(2);
-
-    for (let p of gPoints) {
-      point(p.pos.x, p.pos.y);
-    }
-  }
-
-  //draw the query rectangle (follows the mouse)
-  rectMode(CENTER);
-  noFill();
-  stroke("orange");
-  strokeWeight(0.3);
-  rect(
-    gQueryRectangle.cx,
-    gQueryRectangle.cy,
-    gQueryRectangle.w,
-    gQueryRectangle.h
-  );
-
-  if (isDrawQueryResults) {
-    strokeWeight(7);
-    stroke("red");
-    for (let p of gQueryResults) {
-      point(p.pos.x, p.pos.y);
-    }
-  }
-
-  //debugging count
+function drawDebugPanels(): void {
   showDebugText(50, height - 400, [
     "FPS: " + frameRate().toFixed(2),
     "points from query: " + gQueryResults.length,
@@ -106,47 +90,40 @@ function drawOnly() {
   showDebugText(width / 2, height - 400, [
     "d - toggle Draw of all points",
     "q - toggle draw of Query points",
-    "p - (re)Populate *many* points"
+    "p - (re)Populate *many* points",
+    "g - toggle draw of Grid",
+    "h - hide/show this Help"
   ]);
 }
-
-let gTimings = {
-  timeToBuild: 0,
-  timeToQuery: 0,
-  update: 0,
-  drawOnly: 0,
-  timeToLocateNaively: 0
-};
-let gQueryResults: Point[];
-
-function showDebugText(x: number, y: number, lines: string[]) {
-  const lineHeight = 40;
-  textSize(20);
-  fill("gray");
-  stroke("whitesmoke");
-  rectMode(CORNER);
-  rect(x - 30, y - 30, width - 60, lines.length * lineHeight + 60);
-  noStroke();
-  fill("black");
-
-  push();
-  translate(x, y);
-  lines.forEach((line: string, ix: number) => {
-    translate(0, lineHeight);
-    text(line, 0, 0);
-  });
-  pop();
+function drawQueryRectangle(): void {
+  rectMode(CENTER);
+  noFill();
+  stroke("orange");
+  strokeWeight(0.3);
+  rect(
+    gQueryRectangle.cx,
+    gQueryRectangle.cy,
+    gQueryRectangle.w,
+    gQueryRectangle.h
+  );
 }
-function drawDebugGrid() {
-  noStroke();
-  fill("gray");
-  textSize(8);
-  for (let x = 0; x < width; x += 50) {
-    for (let y = 0; y < height; y += 50) {
-      text(`${x},${y}`, x, y);
-    }
+function drawAllPoints(): void {
+  stroke("white");
+  strokeWeight(2);
+
+  for (let p of gPoints) {
+    point(p.pos.x, p.pos.y);
   }
 }
+
+function drawQueryResults(): void {
+  strokeWeight(7);
+  stroke("red");
+  for (let p of gQueryResults) {
+    point(p.pos.x, p.pos.y);
+  }
+}
+
 function keyPressed() {
   if (key == "d") {
     toggleDrawAllPoints();
@@ -154,9 +131,30 @@ function keyPressed() {
   if (key == "q") {
     toggleDrawQueryResults();
   }
+  if (key == "h") {
+    toggleShowDebugText();
+  }
   if (key == "p") {
     populateTreeRandomly();
   }
+  if (key == "g") {
+    toggleDrawGrid();
+  }
+}
+function toggleDrawAllPoints(): boolean {
+  return (opts.isDrawAllPoints = !opts.isDrawAllPoints);
+}
+
+function toggleDrawQueryResults(): boolean {
+  return (opts.isDrawQueryResults = !opts.isDrawQueryResults);
+}
+
+function toggleShowDebugText(): boolean {
+  return (opts.isShowDebugText = !opts.isShowDebugText);
+}
+
+function toggleDrawGrid(): boolean {
+  return (opts.isGridOn = !opts.isGridOn);
 }
 
 function populateTreeRandomly(): void {
